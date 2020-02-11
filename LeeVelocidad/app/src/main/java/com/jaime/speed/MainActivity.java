@@ -55,8 +55,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private TextView maxSpeed;
     private TextView averageSpeed;
     private TextView distance;
+    private TextView jaime;
     private Chronometer time;
     private Data.OnGpsServiceUpdate onGpsServiceUpdate;
+    private double distAux;
+    private int numeroSatelites;
 
     private boolean firstfix;
 
@@ -133,6 +136,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         maxSpeed = (TextView) findViewById(R.id.maxSpeed);
         averageSpeed = (TextView) findViewById(R.id.averageSpeed);
         distance = (TextView) findViewById(R.id.distance);
+        jaime = (TextView) findViewById(R.id.jaime);
         time = (Chronometer) findViewById(R.id.time);
         currentSpeed = (TextView) findViewById(R.id.currentSpeed);
         progressBarCircularIndeterminate = (ProgressBarCircularIndeterminate) findViewById(R.id.progressBarCircularIndeterminate);
@@ -216,7 +220,15 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             time.setBase(SystemClock.elapsedRealtime() - data.getTime());
             time.start();
             data.setFirstTime(true);
-            startService(new Intent(getBaseContext(), GpsServices.class));
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getBaseContext().startForegroundService(new Intent(getBaseContext(), GpsServices.class));
+
+            } else {
+                startService(new Intent(getBaseContext(), GpsServices.class));
+            }
+
+
             refresh.setVisibility(View.INVISIBLE);
         } else {
             fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
@@ -354,7 +366,26 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             SpannableString s = new SpannableString(String.format(Locale.ENGLISH, "%.0f %s", speed, units));
             s.setSpan(new RelativeSizeSpan(0.25f), s.length() - units.length() - 1, s.length(), 0);
             currentSpeed.setText(s);
+
+            CalculaDistanciaXtiempo(speed);
         }
+
+    }
+
+    private void CalculaDistanciaXtiempo(double s) {
+
+        if(numeroSatelites > 4) {
+            double speedMeter = s * 0.277778;
+
+            double distance = speedMeter * 1;
+
+            distAux = distAux + distance;
+
+            jaime.setText("Dis:  " + String.format("%.2f", distAux) + "  metros");
+        }
+
+
+
 
     }
 
@@ -383,6 +414,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                         satsUsed++;
                     }
                 }
+                numeroSatelites = satsInView;
                 satellite.setText(String.valueOf(satsUsed) + "/" + String.valueOf(satsInView));
                 if (satsUsed == 0) {
                     fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
@@ -428,6 +460,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         distance.setText("");
         time.setText("00:00:00");
         data = new Data(onGpsServiceUpdate);
+        distAux = 0.0;
     }
 
     public static Data getData() {

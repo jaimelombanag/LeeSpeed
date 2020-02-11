@@ -309,4 +309,15 @@
         android:layout_below="@+id/separator6"
         android:layout_centerHorizontal="true" />
 
+    <TextView
+        android:id="@+id/jaime"
+        android:text="Dis"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:layout_marginTop="45dp"
+        android:textColor="@color/grey_light"
+        android:layout_below="@+id/separator6"
+        android:layout_centerHorizontal="true" />
+
 </RelativeLayout>

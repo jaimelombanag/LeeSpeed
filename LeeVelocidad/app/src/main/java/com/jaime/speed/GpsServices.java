@@ -3,11 +3,14 @@ package com.jaime.speed;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
@@ -15,13 +18,25 @@ import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.annotation.RequiresApi;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 public class GpsServices extends Service implements LocationListener, GpsStatus.Listener {
+
+
+
+
+
+
+
     private LocationManager mLocationManager;
 
+    public static final String CHANNEL_ID = "ForegroundServiceChannel";
     Location lastlocation = new Location("last");
     Data data;
 
@@ -31,42 +46,78 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
     double lastLat = 0;
 
     PendingIntent contentIntent;
+    private Context context;
+
+    public static Boolean isRunning = false;
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     public void onCreate() {
-
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        contentIntent = PendingIntent.getActivity(
-                this, 0, notificationIntent, 0);
-
-        updateNotification(false);
-
-        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    Activity#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for Activity#requestPermissions for more details.
-            return;
+        context = getApplicationContext();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForeground(1, startMyOwnForeground());
         }
-        mLocationManager.addGpsStatusListener(this);
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, this);
+
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+            mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+            mLocationManager.addGpsStatusListener(this);
+
+            //try {
+                mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, this);
+
+            //}catch (Exception e){
+            //    e.printStackTrace();
+            //}
+        }
     }
+
+
+
+    /**********************************************************************************************/
+    /**********************************************************************************************/
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private Notification startMyOwnForeground() {
+        Log.i("SPEED", "startMyOwnForeground");
+        String NOTIFICATION_CHANNEL_ID = "com.jaime.speed";
+        String channelName = "Servicio GPS";
+        NotificationChannel chan = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_HIGH);
+        chan.setLightColor(Color.BLUE);
+        chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert manager != null;
+        manager.createNotificationChannel(chan);
+
+        String txtMsj = "Servicio SPEED";
+        Log.i("SPEED", "startMyOwnForeground2");
+
+        Notification.Builder notificationBuilder = new Notification.Builder(this, NOTIFICATION_CHANNEL_ID);
+        Notification notification = notificationBuilder.setOngoing(true)
+                .setAutoCancel(true)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(txtMsj)
+                .setStyle(new Notification.BigTextStyle()
+                        .bigText(txtMsj))
+                .setPriority(Notification.PRIORITY_MIN)
+                .setCategory(Notification.CATEGORY_SERVICE)
+                .build();
+
+
+        return notification;
+    }
+
 
     @Override
     public void onLocationChanged(Location location) {
         data = MainActivity.getData();
-        if (data.isRunning()){
+        if (data.isRunning()) {
             currentLat = location.getLatitude();
             currentLon = location.getLongitude();
 
-            if (data.isFirstTime()){
+            if (data.isFirstTime()) {
                 lastLat = currentLat;
                 lastLon = currentLon;
                 data.setFirstTime(false);
@@ -76,7 +127,7 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
             lastlocation.setLongitude(lastLon);
             double distance = lastlocation.distanceTo(location);
 
-            if (location.getAccuracy() < distance){
+            if (location.getAccuracy() < distance) {
                 data.addDistance(distance);
 
                 lastLat = currentLat;
@@ -85,7 +136,7 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
 
             if (location.hasSpeed()) {
                 data.setCurSpeed(location.getSpeed() * 3.6);
-                if(location.getSpeed() == 0){
+                if (location.getSpeed() == 0) {
                     new isStillStopped().execute();
                 }
             }
@@ -95,27 +146,29 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
     }
 
     @SuppressLint("StringFormatMatches")
-    public void updateNotification(boolean asData){
+    public void updateNotification(boolean asData) {
         Notification.Builder builder = new Notification.Builder(getBaseContext())
                 .setContentTitle(getString(R.string.running))
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(contentIntent);
 
-        if(asData){
+        if (asData) {
             builder.setContentText(String.format(getString(R.string.notification), data.getMaxSpeed(), data.getDistance()));
-        }else{
+        } else {
             builder.setContentText(String.format(getString(R.string.notification), '-', '-'));
         }
         Notification notification = builder.build();
         startForeground(R.string.noti_id, notification);
     }
 
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // If we get killed, after returning from here, restart
         return START_STICKY;
-    }   
-       
+    }
+
+
     @Override
     public IBinder onBind(Intent intent) {
         // We don't provide binding, so return null
