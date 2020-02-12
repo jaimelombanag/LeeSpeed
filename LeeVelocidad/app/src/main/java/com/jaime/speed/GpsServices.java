@@ -112,7 +112,8 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
 
     @Override
     public void onLocationChanged(Location location) {
-        data = MainActivity.getData();
+        //data = MainActivity.getData();
+        data = Taximetro.getData();
         if (data.isRunning()) {
             currentLat = location.getLatitude();
             currentLon = location.getLongitude();

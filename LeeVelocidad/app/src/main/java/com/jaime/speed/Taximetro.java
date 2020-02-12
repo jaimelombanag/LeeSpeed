@@ -1,11 +1,5 @@
 package com.jaime.speed;
 
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
@@ -31,6 +25,12 @@ import android.widget.Chronometer;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.gc.materialdesign.views.ProgressBarCircularIndeterminate;
 import com.gc.materialdesign.widgets.Dialog;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -38,7 +38,7 @@ import com.google.gson.Gson;
 
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements LocationListener, GpsStatus.Listener {
+public class Taximetro extends AppCompatActivity implements LocationListener, GpsStatus.Listener {
 
     private SharedPreferences sharedPreferences;
     private LocationManager mLocationManager;
@@ -60,13 +60,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private Data.OnGpsServiceUpdate onGpsServiceUpdate;
     private double distAux;
     private int numeroSatelites;
-
+    private boolean isTaximetro = false;
     private boolean firstfix;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_taximetro);
 
 
         permision();
@@ -116,11 +116,17 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
                 SpannableString s = new SpannableString(String.format("%.0f %s", maxSpeedTemp, speedUnits));
                 s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
-                maxSpeed.setText(s);
+                //maxSpeed.setText(s);
+
+
+
+                int costos1 = (int) ((distanceTemp / 100) * 82);
+                maxSpeed.setText("$ " + costos1);
+
 
                 s = new SpannableString(String.format("%.0f %s", averageTemp, speedUnits));
                 s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
-                averageSpeed.setText(s);
+                //averageSpeed.setText(s);
 
                 s = new SpannableString(String.format("%.3f %s", distanceTemp, distanceUnits));
                 s.setSpan(new RelativeSizeSpan(0.5f), s.length() - distanceUnits.length() - 1, s.length(), 0);
@@ -181,14 +187,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
 
     public void permision() {
-        if (ContextCompat.checkSelfPermission(MainActivity.this,
+        if (ContextCompat.checkSelfPermission(Taximetro.this,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
+            if (ActivityCompat.shouldShowRequestPermissionRationale(Taximetro.this,
                     Manifest.permission.ACCESS_FINE_LOCATION)) {
-                ActivityCompat.requestPermissions(MainActivity.this,
+                ActivityCompat.requestPermissions(Taximetro.this,
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
             } else {
-                ActivityCompat.requestPermissions(MainActivity.this,
+                ActivityCompat.requestPermissions(Taximetro.this,
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
             }
         }
@@ -200,7 +206,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         switch (requestCode) {
             case 1: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    if (ContextCompat.checkSelfPermission(MainActivity.this,
+                    if (ContextCompat.checkSelfPermission(Taximetro.this,
                             Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                         Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
                     }
@@ -215,6 +221,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
     public void onFabClick(View v) {
         if (!data.isRunning()) {
+            isTaximetro = true;
             fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause));
             data.setRunning(true);
             time.setBase(SystemClock.elapsedRealtime() - data.getTime());
@@ -231,6 +238,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
             refresh.setVisibility(View.INVISIBLE);
         } else {
+            isTaximetro = false;
             fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
             data.setRunning(false);
             status.setText("");
@@ -367,25 +375,22 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             s.setSpan(new RelativeSizeSpan(0.25f), s.length() - units.length() - 1, s.length(), 0);
             currentSpeed.setText(s);
 
-            CalculaDistanciaXtiempo(speed);
+            if(isTaximetro)CalculaDistanciaXtiempo(speed);
         }
 
     }
 
     private void CalculaDistanciaXtiempo(double s) {
 
+        //Log.i("SPEED", "-----Satelites:  "  +  numeroSatelites);
         if(numeroSatelites > 4) {
             double speedMeter = s * 0.3;  // 0.277778 para pasar de km/h a m/s
-
             double distance = speedMeter * 1;
-
             distAux = distAux + distance;
-
             jaime.setText("Dis:  " + String.format("%.2f", distAux) + "  metros");
+            int costo1 = (int) ((distAux / 100) * 82);
+            averageSpeed.setText("$ " + costo1);
         }
-
-
-
 
     }
 
@@ -414,18 +419,23 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                         satsUsed++;
                     }
                 }
-                numeroSatelites = satsInView;
+                numeroSatelites = satsUsed;
                 satellite.setText(String.valueOf(satsUsed) + "/" + String.valueOf(satsInView));
                 if (satsUsed == 0) {
-                    fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
-                    data.setRunning(false);
-                    status.setText("");
-                    stopService(new Intent(getBaseContext(), GpsServices.class));
-                    fab.setVisibility(View.INVISIBLE);
-                    refresh.setVisibility(View.INVISIBLE);
-                    accuracy.setText("");
-                    status.setText(getResources().getString(R.string.waiting_for_fix));
-                    firstfix = true;
+//                    fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
+//                    data.setRunning(false);
+//                    status.setText("");
+//                    stopService(new Intent(getBaseContext(), GpsServices.class));
+//                    fab.setVisibility(View.INVISIBLE);
+//                    refresh.setVisibility(View.INVISIBLE);
+//                    accuracy.setText("");
+//                    status.setText(getResources().getString(R.string.waiting_for_fix));
+//                    firstfix = true;
+
+
+                    numeroSatelites = 0;
+                    Toast.makeText(getApplicationContext(), "Sin señal de GPS...", Toast.LENGTH_LONG).show();
+
                 }
                 break;
 

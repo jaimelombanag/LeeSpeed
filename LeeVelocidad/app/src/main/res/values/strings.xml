@@ -1,6 +1,10 @@
 <resources>
     <string name="app_name">Speed</string>
 
+
+    <string name="costo1">Costo 1</string>
+    <string name="costo2">Costo 2</string>
+
     <string name="max_speed">Max Speed</string>
     <string name="average_speed">Average Speed</string>
     <string name="distance">Distance</string>
