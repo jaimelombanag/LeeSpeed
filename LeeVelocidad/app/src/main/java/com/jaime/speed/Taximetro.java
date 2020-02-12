@@ -221,22 +221,26 @@ public class Taximetro extends AppCompatActivity implements LocationListener, Gp
 
     public void onFabClick(View v) {
         if (!data.isRunning()) {
-            isTaximetro = true;
-            fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause));
-            data.setRunning(true);
-            time.setBase(SystemClock.elapsedRealtime() - data.getTime());
-            time.start();
-            data.setFirstTime(true);
+            if(numeroSatelites == 0){
+                Toast.makeText(getApplicationContext(), "Sin señal de GPS", Toast.LENGTH_LONG).show();
+            }else {
+                isTaximetro = true;
+                fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_pause));
+                data.setRunning(true);
+                time.setBase(SystemClock.elapsedRealtime() - data.getTime());
+                time.start();
+                data.setFirstTime(true);
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                getBaseContext().startForegroundService(new Intent(getBaseContext(), GpsServices.class));
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    getBaseContext().startForegroundService(new Intent(getBaseContext(), GpsServices.class));
 
-            } else {
-                startService(new Intent(getBaseContext(), GpsServices.class));
+                } else {
+                    startService(new Intent(getBaseContext(), GpsServices.class));
+                }
+
+
+                refresh.setVisibility(View.INVISIBLE);
             }
-
-
-            refresh.setVisibility(View.INVISIBLE);
         } else {
             isTaximetro = false;
             fab.setImageDrawable(getResources().getDrawable(R.drawable.ic_action_play));
